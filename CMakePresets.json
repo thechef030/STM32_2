@@ -1,38 +1,86 @@
 {
-    "version": 3,
-    "configurePresets": [
-        {
-            "name": "default",
-            "hidden": true,
-            "generator": "Ninja",
-            "binaryDir": "${sourceDir}/build/${presetName}",
-		    "toolchainFile": "${sourceDir}/cmake/gcc-arm-none-eabi.cmake",
-            "cacheVariables": {
-            }
-        },
-        {
-            "name": "Debug",
-            "inherits": "default",
-            "cacheVariables": {
-                "CMAKE_BUILD_TYPE": "Debug"
-            }
-        },
-        {
-            "name": "Release",
-            "inherits": "default",
-            "cacheVariables": {
-                "CMAKE_BUILD_TYPE": "Release"
-            }
-        }
-    ],
-    "buildPresets": [
-        {
-            "name": "Debug",
-            "configurePreset": "Debug"
-        },
-        {
-            "name": "Release",
-            "configurePreset": "Release"
-        }
-    ]
+  "version": 3,
+  "configurePresets": [
+    {
+      "name": "default",
+      "hidden": true,
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/${presetName}",
+      "toolchainFile": "${sourceDir}/cmake/gcc-arm-none-eabi.cmake",
+      "cacheVariables": {
+        "CMAKE_MAKE_PROGRAM": "C:/Users/tjgus/stm32_lab/.tools/bundles/ninja/1.13.2+st.1/bin/ninja.exe"
+      },
+      "environment": {
+        "PATH": "C:/Users/tjgus/stm32_lab/.tools/bin;C:/Users/tjgus/stm32_lab/.tools/bundles/ninja/1.13.2+st.1/bin;$penv{PATH}",
+        "CUBE_BUNDLE_PATH": "C:/Users/tjgus/stm32_lab/.tools/bundles",
+        "CUBE_CACHE_PATH": "${sourceDir}/build/tool-cache",
+        "CUBE_LOG_PATH": "${sourceDir}/build/tool-logs"
+      }
+    },
+    {
+      "name": "Debug",
+      "inherits": "default",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "STM32_2_TASK": "5"
+      }
+    },
+    {
+      "name": "Release",
+      "inherits": "default",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "STM32_2_TASK": "5"
+      }
+    },
+    {
+      "name": "Task5",
+      "displayName": "STM32_2 Task 5",
+      "inherits": "default",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "STM32_2_TASK": "5"
+      }
+    },
+    {
+      "name": "Task6",
+      "displayName": "STM32_2 Task 6",
+      "inherits": "default",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "STM32_2_TASK": "6"
+      }
+    },
+    {
+      "name": "Task7",
+      "displayName": "STM32_2 Task 7",
+      "inherits": "default",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "STM32_2_TASK": "7"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "Debug",
+      "configurePreset": "Debug"
+    },
+    {
+      "name": "Release",
+      "configurePreset": "Release"
+    },
+    {
+      "name": "Task5",
+      "configurePreset": "Task5"
+    },
+    {
+      "name": "Task6",
+      "configurePreset": "Task6"
+    },
+    {
+      "name": "Task7",
+      "configurePreset": "Task7"
+    }
+  ]
 }

@@ -1,57 +1,75 @@
 /*
- * 초기화·폴링·인터럽트 실습 템플릿입니다. CubeMX 자동 생성 파일이 아닙니다.
- * 학생은 아래 함수의 '실습 코드 작성' 부분을 채웁니다.
- * 아래쪽 HAL 콜백은 자동 생성된 인터럽트 처리 코드와 실습 함수를 연결합니다.
- * 인터럽트에서는 처리할 일을 기록하고 빠르게 돌아옵니다.
- * 인터럽트 함수 안에서는 HAL_Delay, scanf, getchar, printf를 사용하지 않습니다.
+ * STM32_2 과제 5/6/7: UART2 = PC, UART3 = FPGA, 9600 8N1.
+ * getchar와 printf는 메인 루프에서만 사용합니다.
+ * 같은 UART2에서 HAL_UART_Receive_IT를 함께 시작하지 않습니다.
  */
 #include "ece2_474.h"
 #include "main.h"
-/* 주변장치 변수의 extern 선언은 ece2_474.h에 있습니다. */
+#include "stm32_2_task.h"
 
-/* UART 인터럽트 수신 실습 때 필요한 버퍼의 주석을 해제합니다.
- * 파일 범위에 두면 수신 완료 함수에서도 같은 버퍼를 사용할 수 있습니다.
- */
-// static uint8_t uart2_rx_ece2;
-// static uint8_t uart3_rx_ece2;
+/* Watch용 변수. HAL_OK는 MCU 송신 완료이며 FPGA 수신 확인은 아닙니다. */
+volatile uint32_t pc_rx_count = 0U;
+volatile uint8_t pc_last_byte = 0U;
+volatile uint32_t fpga_tx_count = 0U;
+volatile uint32_t fpga_tx_error_count = 0U;
+volatile HAL_StatusTypeDef fpga_last_tx_status = HAL_OK;
 
-/* 주변장치 초기화가 끝난 뒤, 메인 루프에 들어가기 전에 한 번 호출됩니다. */
 void ece2_474_init(void)
 {
-    /* 필요한 기능만 주석을 해제합니다. 기본 핀·통신 설정은 이미 끝난 상태입니다.
-     * VS Code에서 해당 줄에 커서를 놓거나 여러 줄을 선택하고 Ctrl + /를 누르면
-     * 줄 주석(//)을 해제하거나 다시 설정할 수 있습니다.
-     */
-
-    /* TIM6: 100 ms마다 tim6_isr_p4()를 호출합니다. */
-    // HAL_TIM_Base_Start_IT(&htim6);
-
-    /* TIM3: PB4에서 1 kHz PWM을 출력합니다. 비교값 500은 50%입니다. */
-    // HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_1);
-    // __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_1, 500U);
-
-    /* UART2: PC에서 한 바이트를 받으면 uart2_isr_p6()를 호출합니다.
-     * 위의 uart2_rx_ece2 버퍼도 주석을 해제해야 합니다.
-     * 수신 완료 함수에서 HAL_UART_Receive_IT를 다시 호출해야 다음 입력도 받습니다.
-     * getchar·fgets·scanf로 같은 UART를 읽는 방식과 함께 사용하지 않습니다.
-     */
-    // HAL_UART_Receive_IT(&huart2, &uart2_rx_ece2, 1U);
-
-    /* UART3: FPGA에서 한 바이트를 받으면 uart3_isr_p5()를 호출합니다.
-     * 위의 uart3_rx_ece2 버퍼도 주석을 해제해야 합니다.
-     * UART는 한 번 수신한 뒤, 수신 완료 함수에서 다시 수신을 요청합니다.
-     */
-    // HAL_UART_Receive_IT(&huart3, &uart3_rx_ece2, 1U);
-
-    /* GPIO 입력 인터럽트는 이미 켜져 있어 별도 시작 호출이 필요 없습니다.
-     * SPI·I2C와 UART 송신도 별도 시작 없이 필요한 시점에 송수신 함수를 호출합니다.
-     */
+    setvbuf(stdin, NULL, _IONBF, 0);
+    setvbuf(stdout, NULL, _IONBF, 0);
+    printf("\r\nSTM32_2 Task %d | UART2/UART3: 9600 8N1\r\n", STM32_2_TASK);
+#if STM32_2_TASK == 5
+    printf("Send one character (None line ending): 1, A, a\r\n");
+#elif STM32_2_TASK == 6
+    printf("UART2 -> UART3 bridge. Check received data on FPGA COM.\r\n");
+#else
+    printf("FPGA commands: 0=OFF, 1=ON, 2=TOGGLE; others=HOLD.\r\n");
+#endif
 }
 
-/* 메인 루프에서 반복해서 호출됩니다. */
 void polling_routine(void)
 {
-    /* 실습 코드 작성 */
+    /* 입력이 없으면 getchar에서 기다리는 것이 정상입니다. */
+    int ch = getchar();
+    if (ch == EOF)
+    {
+        clearerr(stdin);
+        return;
+    }
+    uint8_t data = (uint8_t)ch;
+    pc_last_byte = data;
+    ++pc_rx_count;
+
+#if STM32_2_TASK != 5
+    /* 과제 6과 7의 MCU 전달 동작은 같습니다.
+     * 문자 '1'(0x31)을 숫자 1(0x01)로 변환하지 않고 그대로 보냅니다.
+     * 기타 문자도 전달하며, LED 상태 유지 여부는 FPGA에서 처리합니다. */
+    HAL_StatusTypeDef result = HAL_UART_Transmit(&huart3, &data, 1U, 100U);
+    fpga_last_tx_status = result;
+    if (result == HAL_OK)
+    {
+        ++fpga_tx_count;
+    }
+    else
+    {
+        ++fpga_tx_error_count;
+    }
+#endif
+
+    /* 제어 문자가 화면을 흐트러뜨리지 않도록 바이트 값으로 표시합니다. */
+    if (data >= 0x20U && data <= 0x7EU)
+    {
+        printf("RX: '%c' (0x%02X)", (int)data, (unsigned int)data);
+    }
+    else
+    {
+        printf("RX: [control/non-ASCII] (0x%02X)", (unsigned int)data);
+    }
+#if STM32_2_TASK != 5
+    printf(" | UART3 TX result=%d", (int)result);
+#endif
+    printf("\r\n");
 }
 
 /* 1. 사용자 버튼 PC13을 눌렀을 때 호출됩니다. 우선순위: 7.

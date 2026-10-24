@@ -55,8 +55,14 @@ target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
 )
 
 # Add project symbols (macros)
+set(STM32_2_TASK "5" CACHE STRING "STM32_2 assignment: 5, 6 or 7")
+set_property(CACHE STM32_2_TASK PROPERTY STRINGS 5 6 7)
+if(NOT STM32_2_TASK MATCHES "^[567]$")
+    message(FATAL_ERROR "STM32_2_TASK must be 5, 6 or 7")
+endif()
 target_compile_definitions(${CMAKE_PROJECT_NAME} PRIVATE
     # Add user defined symbols
+    STM32_2_TASK=${STM32_2_TASK}
 )
 
 # Remove wrong libob.a library dependency when using cpp files
